@@ -52,7 +52,6 @@ class Agent:
         self.show_every_n_iterations = self.config['show_every_n_iterations']
 
         self.writer = SummaryWriter(self.SAVINGS_PATH + 'runs/')
-        #self.deformation_degree = self.config.get('deformation_degree', self.noisedegree)
 
         if self.generator_type == 'flow_field':
             # Define the identity grid
