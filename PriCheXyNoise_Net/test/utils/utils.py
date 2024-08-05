@@ -312,8 +312,6 @@ def train(generator, training_loader, gauss_filter, grid_identity, mu, ac_loss, 
 
         if grid_identity is not None:
             grids = generator(inputs1)
-            mask = getMaskSegmentation(inputs1, segmentation_model)
-            grids = (grids * mask)
             grids = grid_identity - mu * grids
             grids = gauss_filter(grids)
             grids = grids.permute(0, 2, 3, 1)
@@ -322,8 +320,6 @@ def train(generator, training_loader, gauss_filter, grid_identity, mu, ac_loss, 
         else:
             fakes_1 = generator(inputs1)
             fakes_1 = inputs1 + (fakes_1 * deformation_degree)
-            save_image(inputs1,'/home/woody/iwi5/iwi5155h/GaussianNoise/Noise_0.1/test/sample/OriginalImg.png')
-            save_image(fakes_1,'/home/woody/iwi5/iwi5155h/GaussianNoise/Noise_0.1/test/sample/fakes_OG.png')
 
         if epoch % show_every_n_epochs == 0 and i % show_every_n_iters == 0:
             # Write images to tensorboard
@@ -401,7 +397,7 @@ def train(generator, training_loader, gauss_filter, grid_identity, mu, ac_loss, 
 
 
 def validate(generator, validation_loader, gauss_filter, grid_identity, mu, ac_loss, verification_loss, ac_loss_weight, 
-             ver_loss_weight, epoch, n_epochs, show_every_n_epochs, show_every_n_iters, save_path, segmentation_model, deformation_degree):
+             ver_loss_weight, epoch, n_epochs, show_every_n_epochs, show_every_n_iters, save_path, deformation_degree):
     """This function is used to validate the entire anonymization model.
 
     :param generator: torch.nn.Module
@@ -455,10 +451,6 @@ def validate(generator, validation_loader, gauss_filter, grid_identity, mu, ac_l
             if grid_identity is not None:
                 # Generate grids
                 grids = generator(inputs1)
-
-                mask = getMaskSegmentation(inputs1, segmentation_model)
-                grids = (grids*mask) + ((1 - mask)*0)
-
                 # Constraints on grids
                 grids = grid_identity - mu * grids
                 grids = gauss_filter(grids)
@@ -469,8 +461,6 @@ def validate(generator, validation_loader, gauss_filter, grid_identity, mu, ac_l
             else:
                 fakes_1 = generator(inputs1)
                 fakes_1 = inputs1 + (fakes_1 * deformation_degree)
-                save_image(inputs1,'/home/woody/iwi5/iwi5155h/GaussianNoise/Noise_0.1/test/sample/ValOriginalImg.png')
-                save_image(fakes_1,'/home/woody/iwi5/iwi5155h/GaussianNoise/Noise_0.1/test/sample/Valfakes_OG.png')
                 
 
             if epoch % show_every_n_epochs == 0 and i % show_every_n_iters == 0:
@@ -509,7 +499,7 @@ def validate(generator, validation_loader, gauss_filter, grid_identity, mu, ac_l
 
 
 def train_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_filter, mu, training_loader, criterion,
-              optimizer, epoch, n_epochs, segmentation_model, deformation_degree):
+              optimizer, epoch, n_epochs, deformation_degree):
     """This function is used to re-train the incorporated patient verification architecture with 
     deformed/perturbed/anonymized images.
 
@@ -553,8 +543,6 @@ def train_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_fil
         if perturbation_type == 'flow_field':
             # Generate grids, impose constraints, and compute the deformed images
             grid1 = perturbation_net(inputs1)
-            #mask = getMaskSegmentation(inputs1, segmentation_model)
-            #grid1 = (grid1*mask) + ((1 - mask)*grid_identity)
             grid1 = grid_identity - mu * grid1
             grid1 = gauss_filter(grid1)
             grid1 = grid1.permute(0, 2, 3, 1)
@@ -562,8 +550,6 @@ def train_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_fil
 
             # Generate grids, impose constraints, and compute the deformed images
             grid2 = perturbation_net(inputs2)
-            #mask = getMaskSegmentation(inputs2, segmentation_model)
-            #grid2 = (grid2*mask) + ((1 - mask)*grid_identity)
             grid2 = grid_identity - mu * grid2
             grid2 = gauss_filter(grid2)
             grid2 = grid2.permute(0, 2, 3, 1)
@@ -576,16 +562,11 @@ def train_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_fil
 
         if perturbation_type == 'noise':
             # Compute Noise output
-            #inputs1 = perturbation_net(inputs1)
-            #inputs2 = perturbation_net(inputs2)
             fakeImg1 = perturbation_net(inputs1)
             inputs1 = inputs1 + (fakeImg1 * deformation_degree)
 
             fakeImg2 = perturbation_net(inputs2)
             inputs2 = inputs2 + (fakeImg2 * deformation_degree)
-            
-            save_image(inputs1,'/home/woody/iwi5/iwi5155h/GaussianNoise/Noise_0.1/test/sample/Input1Snn.png')
-            save_image(inputs2,'/home/woody/iwi5/iwi5155h/GaussianNoise/Noise_0.1/test/sample/Input2Snn.png')
 
         if perturbation_type in ['flow_field', 'privacy_net', 'dp_pix','noise']:
             # Expand the input tensors
@@ -619,7 +600,7 @@ def train_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_fil
 
 
 def validate_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_filter, mu, validation_loader,
-                 criterion, epoch, n_epochs, segmentation_model, deformation_degree):
+                 criterion, epoch, n_epochs, deformation_degree):
     """This function is used to validate the incorporated patient verification architecture with
     deformed/perturbed/anonymized images.
 
@@ -662,8 +643,6 @@ def validate_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_
             if perturbation_type == 'flow_field':
                 # Generate grids, impose constraints, and compute the deformed images
                 grid1 = perturbation_net(inputs1)
-                #mask = getMaskSegmentation(inputs1, segmentation_model)
-                #grid1 = (grid1*mask) + ((1 - mask)*grid_identity)
                 grid1 = grid_identity - mu * grid1
                 grid1 = gauss_filter(grid1)
                 grid1 = grid1.permute(0, 2, 3, 1)
@@ -671,8 +650,6 @@ def validate_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_
 
                 # Generate grids, impose constraints, and compute the deformed images
                 grid2 = perturbation_net(inputs2)
-                #mask = getMaskSegmentation(inputs2, segmentation_model)
-                #grid2 = (grid2*mask) + ((1 - mask)*grid_identity)
                 grid2 = grid_identity - mu * grid2
                 grid2 = gauss_filter(grid2)
                 grid2 = grid2.permute(0, 2, 3, 1)
@@ -680,8 +657,6 @@ def validate_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_
 
             if perturbation_type == 'noise':
                 # Compute Noise output
-                #inputs1 = perturbation_net(inputs1)
-                #inputs2 = perturbation_net(inputs2)
                 fakeImg1 = perturbation_net(inputs1)
                 inputs1 = inputs1 + (fakeImg1 * deformation_degree)
 
@@ -719,7 +694,7 @@ def validate_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_
     return validation_loss
 
 
-def test_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_filter, mu, test_loader, segmentation_model, deformation_degree):
+def test_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_filter, mu, test_loader, deformation_degree):
     """This function is used to test the incorporated patient verification architecture after re-training with
     deformed/perturbed/anonymized images. This function represents a realistic attack scenario where a real image is
     attempted to be linked to an anonymized image.
@@ -769,8 +744,6 @@ def test_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_filt
             if perturbation_type == 'flow_field':
                 # Generate grids, impose constraints, and compute the deformed images
                 grid1 = perturbation_net(inputs1)
-                #mask = getMaskSegmentation(inputs1, segmentation_model)
-                #grid1 = (grid1*mask) + ((1 - mask)*grid_identity)
                 grid1 = grid_identity - mu * grid1
                 grid1 = gauss_filter(grid1)
                 grid1 = grid1.permute(0, 2, 3, 1)
@@ -782,7 +755,6 @@ def test_snn(perturbation_type, net, perturbation_net, grid_identity, gauss_filt
             
             if perturbation_type == 'noise':
                 # Compute noiset output
-                #inputs1 = perturbation_net(inputs1)
                 fakeImg1 = perturbation_net(inputs1)
                 inputs1 = inputs1 + (fakeImg1 * deformation_degree)
 
